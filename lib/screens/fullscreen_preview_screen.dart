@@ -87,37 +87,92 @@ class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
     }
   }
 
+  // Future<void> _applyWallpaper() async {
+  //   if (_isApplying) return;
+  //   setState(() => _isApplying = true);
+  //   _showApplyingDialog();
+  //
+  //   try {
+  //     final message = await _applyService.applyLiveWallpaper(
+  //       videoUrl: widget.wallpaper.imageUrl,
+  //       fileName: widget.wallpaper.name,
+  //     );
+  //     if (!mounted) return;
+  //     Navigator.of(context, rootNavigator: true).pop();
+  //     AppSnackbar.success(message);
+  //   } on WallpaperApplyException catch (error) {
+  //     if (!mounted) return;
+  //     Navigator.of(context, rootNavigator: true).pop();
+  //     AppSnackbar.error(error.message);
+  //   } catch (error, stackTrace) {
+  //     AppLogger.error(
+  //       'Apply wallpaper failed',
+  //       error: error,
+  //       stackTrace: stackTrace,
+  //     );
+  //     if (!mounted) return;
+  //     Navigator.of(context, rootNavigator: true).pop();
+  //     AppSnackbar.error('Unable to apply live wallpaper.');
+  //   } finally {
+  //     if (mounted) setState(() => _isApplying = false);
+  //   }
+  // }
   Future<void> _applyWallpaper() async {
     if (_isApplying) return;
+
     setState(() => _isApplying = true);
     _showApplyingDialog();
 
     try {
+      // Download video first
+      final response = await http.get(
+        Uri.parse(widget.wallpaper.imageUrl),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to download wallpaper');
+      }
+
+      // Save temporary file
+      final tempDir = await getTemporaryDirectory();
+
+      final file = File(
+        '${tempDir.path}/${widget.wallpaper.name}.mp4',
+      );
+
+      await file.writeAsBytes(response.bodyBytes);
+
+      // Apply LOCAL FILE
       final message = await _applyService.applyLiveWallpaper(
-        videoUrl: widget.wallpaper.imageUrl,
+        videoUrl: file.path,
         fileName: widget.wallpaper.name,
       );
+
       if (!mounted) return;
+
       Navigator.of(context, rootNavigator: true).pop();
+
       AppSnackbar.success(message);
-    } on WallpaperApplyException catch (error) {
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      AppSnackbar.error(error.message);
     } catch (error, stackTrace) {
       AppLogger.error(
         'Apply wallpaper failed',
         error: error,
         stackTrace: stackTrace,
       );
+
       if (!mounted) return;
+
       Navigator.of(context, rootNavigator: true).pop();
-      AppSnackbar.error('Unable to apply live wallpaper.');
+
+      AppSnackbar.error(
+        'Unable to apply live wallpaper.',
+      );
     } finally {
-      if (mounted) setState(() => _isApplying = false);
+      if (mounted) {
+        setState(() => _isApplying = false);
+      }
     }
   }
-
   void _showApplyingDialog() {
     showDialog<void>(
       context: context,

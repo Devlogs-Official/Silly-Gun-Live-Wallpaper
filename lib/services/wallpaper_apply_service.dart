@@ -57,19 +57,19 @@ class WallpaperApplyService {
       await openAppSettings();
     }
 
-    final storageStatus = await Permission.storage.request();
-    if (storageStatus.isPermanentlyDenied) {
-      await openAppSettings();
-      throw const WallpaperApplyException(
-        'Storage permission is required to prepare the live wallpaper.',
-      );
-    }
-
-    if (storageStatus.isDenied) {
-      throw const WallpaperApplyException(
-        'Storage permission was denied.',
-      );
-    }
+    // final storageStatus = await Permission.storage.request();
+    // if (storageStatus.isPermanentlyDenied) {
+    //   await openAppSettings();
+    //   throw const WallpaperApplyException(
+    //     'Storage permission is required to prepare the live wallpaper.',
+    //   );
+    // }
+    //
+    // if (storageStatus.isDenied) {
+    //   throw const WallpaperApplyException(
+    //     'Storage permission was denied.',
+    //   );
+    // }
   }
 
   Future<File> _downloadVideo({

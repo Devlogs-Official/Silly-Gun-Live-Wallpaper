@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:animations/animations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +38,21 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
   late int _selectedIndex;
   bool _didPrecacheDependencies = false;
   bool _routePaused = false;
+  Timer? _pageChangeDebounce;
+
+  Future<void> _onPageChanged(int index) async {
+    _pageChangeDebounce?.cancel();
+    _controllers[_selectedIndex]?.pause();
+    if (!mounted) return;
+    setState(() => _selectedIndex = index);
+
+    _pageChangeDebounce = Timer(const Duration(milliseconds: 150), () async {
+      await _initializeVideo(index, play: true);
+      if (!mounted) return;
+      _preloadNearby(index);
+    });
+  }
+
 
 
   @override
@@ -53,7 +70,6 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     if (_didPrecacheDependencies) return;
     _didPrecacheDependencies = true;
     _preloadNearby(_selectedIndex);
@@ -86,29 +102,54 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
       if (play && !_routePaused) await controller.play();
       if (mounted) setState(() {});
     } catch (error, stackTrace) {
-      AppLogger.error(
-        'Video initialization failed',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      AppLogger.error('Video initialization failed', error: error, stackTrace: stackTrace);
       _controllers.remove(index);
       await controller.dispose();
-      _videoErrors[index] = error is VideoPlaybackException
-          ? error.message
-          : 'Video failed to load. Please try again.';
+
+      // Only show error UI for non-timeout failures
+      final isTimeout = error is TimeoutException;
+      if (!isTimeout) {
+        _videoErrors[index] = error is VideoPlaybackException
+            ? error.message
+            : 'Video failed to load. Please try again.';
+      }
       if (mounted) setState(() {});
     }
-  }
-
-  void _preloadNearby(int index) {
-    final keep = {index - 1, index, index + 1};
-    final disposeIndexes = _controllers.keys
-        .where((controllerIndex) => !keep.contains(controllerIndex))
-        .toList();
-    for (final disposeIndex in disposeIndexes) {
-      _controllers.remove(disposeIndex)?.dispose();
     }
 
+
+  // void _preloadNearby(int index) {
+  //   final keep = {index - 1, index, index + 1};
+  //   final disposeIndexes = _controllers.keys
+  //       .where((controllerIndex) => !keep.contains(controllerIndex))
+  //       .toList();
+  //   for (final disposeIndex in disposeIndexes) {
+  //     _controllers.remove(disposeIndex)?.dispose();
+  //   }
+  //
+  //   for (final nearbyIndex in [index - 1, index + 1]) {
+  //     if (nearbyIndex >= 0 && nearbyIndex < widget.wallpapers.length) {
+  //       precacheImage(
+  //         CachedNetworkImageProvider(
+  //           widget.wallpapers[nearbyIndex].thumbnailUrl,
+  //         ),
+  //         context,
+  //       );
+  //       _initializeVideo(nearbyIndex, play: false);
+  //     }
+  //   }
+  // }
+  void _preloadNearby(int index) {
+    // Dispose controllers that are too far away
+    final keep = {index - 1, index, index + 1};
+    final disposeIndexes = _controllers.keys
+        .where((i) => !keep.contains(i))
+        .toList();
+    for (final i in disposeIndexes) {
+      _controllers.remove(i)?.dispose();
+    }
+
+    // Only precache thumbnails — don't pre-initialize video codecs
     for (final nearbyIndex in [index - 1, index + 1]) {
       if (nearbyIndex >= 0 && nearbyIndex < widget.wallpapers.length) {
         precacheImage(
@@ -117,11 +158,10 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
           ),
           context,
         );
-        _initializeVideo(nearbyIndex, play: false);
+        // Removed: _initializeVideo(nearbyIndex, play: false)
       }
     }
   }
-
   Future<void> _selectWallpaper(int index) async {
     if (index == _selectedIndex) return;
     if (!mounted) return;
@@ -132,17 +172,14 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
     );
   }
 
-  Future<void> _onPageChanged(int index) async {
-    _controllers[_selectedIndex]?.pause();
-    if (!mounted) return;
-    setState(() => _selectedIndex = index);
-    await _initializeVideo(index, play: true);
-    if (!mounted) return;
-    _preloadNearby(index);
-  }
-
-
-
+  // Future<void> _onPageChanged(int index) async {
+  //   _controllers[_selectedIndex]?.pause();
+  //   if (!mounted) return;
+  //   setState(() => _selectedIndex = index);
+  //   await _initializeVideo(index, play: true);
+  //   if (!mounted) return;
+  //   _preloadNearby(index);
+  // }
 
   Future<void> _retryVideo(int index) async {
     _controllers.remove(index)?.dispose();
@@ -162,7 +199,6 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
       _controllers[_selectedIndex]?.pause();
       return;
     }
-
     if (state == AppLifecycleState.resumed && !_routePaused) {
       _controllers[_selectedIndex]?.play();
     }
@@ -178,10 +214,9 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
     _controllers[_selectedIndex]?.play();
   }
 
-
-
   @override
   void dispose() {
+    _pageChangeDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     for (final controller in _controllers.values) {
@@ -194,22 +229,22 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        ExitDialog.show(context);
-      },
+      canPop: true,
+      // onPopInvokedWithResult: (didPop, result) {
+      //   if (didPop) return;
+      //   ExitDialog.show(context);
+      // },
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           leading: IconButton(
-            onPressed: ()=> Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
           title: const Text(
-            'Live Wallpaper',
+            'Live Wallpapers',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -254,7 +289,6 @@ class _WallpaperPreviewScreenState extends State<WallpaperPreviewScreen>
                 selectedIndex: _selectedIndex,
                 onSelected: _selectWallpaper,
               ),
-          
             ],
           ),
         ),
@@ -291,15 +325,19 @@ class _PreviewCard extends StatelessWidget {
       tag: 'wallpaper-${wallpaper.id}',
       child: Material(
         color: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(34),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 280),
-                child: ready
-                    ? FittedBox(
+        child: Column(
+          children: [
+            // ── Video / thumbnail card ──────────────────────────────
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(34),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      child: ready
+                          ? FittedBox(
                         key: const ValueKey('video'),
                         fit: BoxFit.cover,
                         child: SizedBox(
@@ -308,106 +346,113 @@ class _PreviewCard extends StatelessWidget {
                           child: VideoPlayer(controller!),
                         ),
                       )
-                    : CachedNetworkImage(
+                          : SizedBox.expand(
                         key: const ValueKey('thumb'),
-                        imageUrl: wallpaper.thumbnailUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const VideoLoader(),
-                        errorWidget: (context, url, error) => const ColoredBox(
-                          color: Colors.black,
-                          child: Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-              ),
-              if (!ready && !hasError) const Positioned.fill(child: VideoLoader()),
-              if (hasError)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.62),
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.play_disabled_rounded,
-                          color: Colors.white,
-                          size: 44,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            height: 1.3,
+                        child: CachedNetworkImage(
+                          imageUrl: wallpaper.thumbnailUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                          const VideoLoader(),
+                          errorWidget: (context, url, error) =>
+                          const ColoredBox(
+                            color: Colors.black,
+                            child: Icon(Icons.broken_image_outlined),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: onRetry,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Retry'),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              Positioned(
-                left: 42,
-                right: 42,
-                bottom: 34,
-                child: OpenContainer<void>(
-                  transitionType: ContainerTransitionType.fadeThrough,
-                  transitionDuration: const Duration(milliseconds: 460),
-                  closedElevation: 0,
-                  openElevation: 0,
-                  closedColor: Colors.white,
-                  openColor: Colors.black,
-                  onClosed: (_) => onExpandClosed(),
-                  closedShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(34),
-                  ),
-                  openBuilder: (context, action) => FullscreenPreviewScreen(
-                    wallpaper: wallpaper,
-                  ),
-                  closedBuilder: (_, openContainer) {
-                    return InkWell(
-                      onTap: () {
-                        onExpandOpen();
-                        openContainer();
-                      },
-                      borderRadius: BorderRadius.circular(34),
-                      child: const SizedBox(
-                        height: 58,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.fullscreen_rounded, color: Colors.black),
-                            SizedBox(width: 12),
-                            Text(
-                              'Expand',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0,
+                    if (hasError)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.62),
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.play_disabled_rounded,
+                                color: Colors.white,
+                                size: 44,
                               ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: Colors.black54,
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              Text(
+                                errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: onRetry,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Retry'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  },
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // ── Expand button — always outside the card ─────────────
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 42),
+              child: OpenContainer<void>(
+                transitionType: ContainerTransitionType.fadeThrough,
+                transitionDuration: const Duration(milliseconds: 460),
+                closedElevation: 0,
+                openElevation: 0,
+                closedColor: Colors.black,
+                openColor: Colors.white,
+                onClosed: (_) => onExpandClosed(),
+                closedShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(34),
+                ),
+                openBuilder: (context, action) => FullscreenPreviewScreen(
+                  wallpaper: wallpaper,
+                ),
+                closedBuilder: (_, openContainer) {
+                  return InkWell(
+                    onTap: () {
+                      onExpandOpen();
+                      openContainer();
+                    },
+                    borderRadius: BorderRadius.circular(34),
+                    child: const SizedBox(
+                      height: 58,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.fullscreen_rounded, color: Colors.white),
+                          SizedBox(width: 12),
+                          Text(
+                            'Expand',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
