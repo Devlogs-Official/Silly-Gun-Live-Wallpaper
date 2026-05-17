@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Covers getTemporaryDirectory() → /data/data/com.app/cache/ -->
+    <cache-path name="cache" path="." />
+
+    <!-- Covers getApplicationDocumentsDirectory() if ever needed -->
+    <files-path name="files" path="." />
+
+    <!-- Covers external storage if ever needed -->
+    <external-path name="external" path="." />
+</paths>
