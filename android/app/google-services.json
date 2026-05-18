@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "731717918685",
+    "project_id": "silly-gun-live-wallpapers",
+    "storage_bucket": "silly-gun-live-wallpapers.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731717918685:android:d39c78430ade1bcf55a034",
+        "android_client_info": {
+          "package_name": "pro.devlogs.sillygunwallpaper.live"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcGxGJIPnKPDgwiBh5FWKYCR1ETBUeIYw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
