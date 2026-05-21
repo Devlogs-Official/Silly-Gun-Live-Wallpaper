@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:wallpaper_manager_plus/wallpaper_manager_plus.dart';
 
 import '../core/app_logger.dart';
@@ -33,7 +32,6 @@ class WallpaperApplyService {
       );
     }
 
-    await _requestPermissions();
     final file = await _downloadVideo(videoUrl: videoUrl, fileName: fileName);
 
     try {
@@ -49,27 +47,6 @@ class WallpaperApplyService {
         'Could not open the live wallpaper picker.',
       );
     }
-  }
-
-  Future<void> _requestPermissions() async {
-    final notificationStatus = await Permission.notification.request();
-    if (notificationStatus.isPermanentlyDenied) {
-      await openAppSettings();
-    }
-
-    // final storageStatus = await Permission.storage.request();
-    // if (storageStatus.isPermanentlyDenied) {
-    //   await openAppSettings();
-    //   throw const WallpaperApplyException(
-    //     'Storage permission is required to prepare the live wallpaper.',
-    //   );
-    // }
-    //
-    // if (storageStatus.isDenied) {
-    //   throw const WallpaperApplyException(
-    //     'Storage permission was denied.',
-    //   );
-    // }
   }
 
   Future<File> _downloadVideo({
