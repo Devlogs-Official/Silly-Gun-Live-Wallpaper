@@ -56,7 +56,6 @@ class _LiveWallpapersScreenState extends State<LiveWallpapersScreen> {
     if (!mounted) return;
 
     if (!hasInternet) {
-      AppSnackbar.internet('You are offline. Showing cached wallpapers.');
       context.read<WallpaperProvider>().restoreCachedWallpapers();
       return;
     }
@@ -143,17 +142,9 @@ class _LiveWallpapersScreenState extends State<LiveWallpapersScreen> {
               return _EmptyState(onRefresh: _refreshWallpapers);
             }
 
-            return Column(
-              children: [
-                if (!connectivity.hasInternet)
-                  const _OfflineBanner(),
-                Expanded(
-                  child: _WallpaperGrid(
-                    scrollController: _scrollController,
-                    onRefresh: _refreshWallpapers,
-                  ),
-                ),
-              ],
+            return _WallpaperGrid(
+              scrollController: _scrollController,
+              onRefresh: _refreshWallpapers,
             );
           },
         ),
@@ -181,35 +172,43 @@ class _WallpaperGrid extends StatelessWidget {
         selector: (_, provider) =>
             provider.wallpapers.length + (provider.isLoadingMore ? 1 : 0),
         builder: (context, itemCount, _) {
-          return MasonryGridView.count(
-            controller: scrollController,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-            crossAxisCount: 2,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            itemCount: itemCount,
-            itemBuilder: (context, index) {
-              final provider = context.read<WallpaperProvider>();
-              if (index >= provider.wallpapers.length) {
-                return const _BottomLoader();
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 48) {
+                return const SizedBox.shrink();
               }
 
-              return WallpaperGridItem(
-                key: ValueKey(provider.wallpapers[index].id),
-                wallpaper: provider.wallpapers[index],
-                index: index,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => WallpaperPreviewScreen(
-                        wallpaper: provider.wallpapers[index],
-                        wallpapers: provider.wallpapers,
-                        initialIndex: index,
-                      ),
-                    ),
+              return MasonryGridView.count(
+                controller: scrollController,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                crossAxisCount: 2,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                itemCount: itemCount,
+                itemBuilder: (context, index) {
+                  final provider = context.read<WallpaperProvider>();
+                  if (index >= provider.wallpapers.length) {
+                    return const _BottomLoader();
+                  }
+
+                  return WallpaperGridItem(
+                    key: ValueKey(provider.wallpapers[index].id),
+                    wallpaper: provider.wallpapers[index],
+                    index: index,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => WallpaperPreviewScreen(
+                            wallpaper: provider.wallpapers[index],
+                            wallpapers: provider.wallpapers,
+                            initialIndex: index,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
@@ -257,12 +256,6 @@ class _EmptyState extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(height: MediaQuery.sizeOf(context).height * 0.26),
-          const Icon(
-            Icons.wallpaper_rounded,
-            color: Color(0xFF8FE3CF),
-            size: 52,
-          ),
-          const SizedBox(height: 16),
           Text(
             'No wallpapers found',
             textAlign: TextAlign.center,
@@ -270,42 +263,6 @@ class _EmptyState extends StatelessWidget {
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OfflineBanner extends StatelessWidget {
-  const _OfflineBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFF151A22),
-        border: Border(
-          bottom: BorderSide(color: Color(0x1FFFFFFF)),
-        ),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.cloud_off_rounded, color: Color(0xFFFFC857), size: 18),
-          SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              'You are viewing cached wallpapers',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Color(0xFFFFE4A3),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
           ),
         ],
       ),

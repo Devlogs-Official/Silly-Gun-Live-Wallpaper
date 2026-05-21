@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/app_logger.dart';
 import 'core/error_handler.dart';
 import 'providers/wallpaper_provider.dart';
+import 'screens/live_wallpapers_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/connectivity_service.dart';
 import 'services/wallpaper_cache_service.dart';
@@ -18,19 +19,7 @@ Future<void> main() async {
       ErrorHandler.initialize();
 
       final cacheService = WallpaperCacheService();
-      try {
-        await cacheService.init();
-      } catch (error, stackTrace) {
-        AppLogger.error(
-          'Hive cache initialization failed',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-
       final connectivityService = ConnectivityService();
-      await connectivityService.initialize();
-
       runApp(
         SillyGunWallpapersApp(
           cacheService: cacheService,
@@ -42,7 +31,7 @@ Future<void> main() async {
   );
 }
 
-class SillyGunWallpapersApp extends StatelessWidget {
+class SillyGunWallpapersApp extends StatefulWidget {
   const SillyGunWallpapersApp({
     super.key,
     required this.cacheService,
@@ -53,14 +42,59 @@ class SillyGunWallpapersApp extends StatelessWidget {
   final ConnectivityService connectivityService;
 
   @override
+  State<SillyGunWallpapersApp> createState() => _SillyGunWallpapersAppState();
+}
+
+class _SillyGunWallpapersAppState extends State<SillyGunWallpapersApp> {
+  static const _minimumSplashDuration = Duration(seconds: 5);
+
+  late final WallpaperProvider _wallpaperProvider = WallpaperProvider(
+    cacheService: widget.cacheService,
+  );
+  late final Future<void> _initialization = _initializeServices();
+
+  Future<void> _initializeServices() async {
+    final minimumSplash = Future<void>.delayed(_minimumSplashDuration);
+
+    try {
+      await widget.cacheService.init();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Hive cache initialization failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    try {
+      await widget.connectivityService.initialize();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Connectivity initialization failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    await minimumSplash;
+  }
+
+  @override
+  void dispose() {
+    _wallpaperProvider.dispose();
+    widget.connectivityService.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<ConnectivityService>(
-          create: (_) => connectivityService,
+        ChangeNotifierProvider<ConnectivityService>.value(
+          value: widget.connectivityService,
         ),
-        ChangeNotifierProvider(
-          create: (_) => WallpaperProvider(cacheService: cacheService),
+        ChangeNotifierProvider<WallpaperProvider>.value(
+          value: _wallpaperProvider,
         ),
       ],
       child: MaterialApp(
@@ -100,7 +134,16 @@ class SillyGunWallpapersApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const SplashScreen(),
+        home: FutureBuilder<void>(
+          future: _initialization,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SplashScreen();
+            }
+
+            return const LiveWallpapersScreen();
+          },
+        ),
       ),
     );
   }
