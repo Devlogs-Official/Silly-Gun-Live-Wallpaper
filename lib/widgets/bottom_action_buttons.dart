@@ -6,11 +6,13 @@ class BottomActionButtons extends StatelessWidget {
     required this.onShare,
     required this.onApply,
     required this.isApplying,
+    required this.isSharing,
   });
 
   final VoidCallback onShare;
   final VoidCallback onApply;
   final bool isApplying;
+  final bool isSharing;
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +25,9 @@ class BottomActionButtons extends StatelessWidget {
             Expanded(
               child: _ActionButton(
                 icon: Icons.ios_share_rounded,
-                label: 'Share',
-                onPressed: isApplying ? null : onShare,
+                label: isSharing ? 'Sharing' : 'Share',
+                onPressed: isApplying || isSharing ? null : onShare,
+                loading: isSharing,
               ),
             ),
             const SizedBox(width: 12),
@@ -32,7 +35,7 @@ class BottomActionButtons extends StatelessWidget {
               child: _ActionButton(
                 icon: Icons.wallpaper_rounded,
                 label: isApplying ? 'Applying' : 'Apply Wallpaper',
-                onPressed: isApplying ? null : onApply,
+                onPressed: isApplying || isSharing ? null : onApply,
                 filled: true,
               ),
             ),
@@ -49,12 +52,14 @@ class _ActionButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.filled = false,
+    this.loading = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
   final bool filled;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +67,17 @@ class _ActionButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 19),
+        if (loading)
+          const SizedBox(
+            width: 19,
+            height: 19,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: Colors.white,
+            ),
+          )
+        else
+          Icon(icon, size: 19),
         const SizedBox(width: 8),
         Flexible(
           child: Text(

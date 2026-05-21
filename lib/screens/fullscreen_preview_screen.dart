@@ -27,6 +27,10 @@ class FullscreenPreviewScreen extends StatefulWidget {
 }
 
 class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
+  static const String _appName = 'Silly Smile Gun Wallpaper';
+  static const String _appLink =
+      'https://play.google.com/store/apps/details?id=com.pro.devlogs.sillygunwallpaper.live';
+
   late final VideoPlayerController _controller;
   final WallpaperApplyService _applyService = WallpaperApplyService();
   bool _ready = false;
@@ -68,7 +72,8 @@ class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
       }
 
       final tempDir = await getTemporaryDirectory();
-      final fileName = '${widget.wallpaper.name.replaceAll(RegExp(r'[^\w]'), '_')}.mp4';
+      final fileName =
+          '${widget.wallpaper.name.replaceAll(RegExp(r'[^\w]'), '_')}.mp4';
       final tempFile = File('${tempDir.path}/$fileName');
       await tempFile.writeAsBytes(response.bodyBytes);
 
@@ -76,7 +81,8 @@ class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
 
       await Share.shareXFiles(
         [XFile(tempFile.path, mimeType: 'video/mp4')],
-        text: 'Check out this Silly Gun live wallpaper!',
+        subject: _appName,
+        text: '$_appName\n\nDownload the app:\n$_appLink',
       );
     } catch (error, stackTrace) {
       AppLogger.error('Share failed', error: error, stackTrace: stackTrace);
@@ -242,9 +248,8 @@ class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
       ),
       bottomNavigationBar: BottomActionButtons(
         isApplying: _isApplying,
-        onShare: (){
-          _isSharing ? null : _shareWallpaper();
-        },
+        isSharing: _isSharing,
+        onShare: _shareWallpaper,
         onApply: _applyWallpaper,
       ),
     );
