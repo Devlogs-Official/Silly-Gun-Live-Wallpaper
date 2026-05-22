@@ -29,7 +29,7 @@ class FullscreenPreviewScreen extends StatefulWidget {
 class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
   static const String _appName = 'Silly Smile Gun Wallpaper';
   static const String _appLink =
-      'https://play.google.com/store/apps/details?id=com.pro.devlogs.sillygunwallpaper.live';
+      'https://play.google.com/store/apps/details?id=pro.devlogs.sillygunwallpaper.live';
 
   late final VideoPlayerController _controller;
   final WallpaperApplyService _applyService = WallpaperApplyService();
@@ -79,10 +79,12 @@ class _FullscreenPreviewScreenState extends State<FullscreenPreviewScreen> {
 
       if (!mounted) return;
 
-      await Share.shareXFiles(
-        [XFile(tempFile.path, mimeType: 'video/mp4')],
-        subject: _appName,
-        text: '$_appName\n\nDownload the app:\n$_appLink',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(tempFile.path, mimeType: 'video/mp4')],
+          subject: _appName,
+          text: '$_appName\n\nDownload the app:\n$_appLink',
+        ),
       );
     } catch (error, stackTrace) {
       AppLogger.error('Share failed', error: error, stackTrace: stackTrace);

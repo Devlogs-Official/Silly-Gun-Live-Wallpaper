@@ -8,7 +8,6 @@ import '../core/app_exceptions.dart';
 import '../core/app_logger.dart';
 import '../models/wallpaper_model.dart';
 import '../services/wallpaper_apply_service.dart';
-import '../widgets/exit_dialog.dart';
 import '../widgets/video_loader.dart';
 import '../widgets/wallpaper_thumbnail_strip.dart';
 import 'fullscreen_preview_screen.dart';

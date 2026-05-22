@@ -1,4 +1,4 @@
-package com.pro.devlogs.sillygunwallpaper.live
+package pro.devlogs.sillygunwallpaper.live
 
 import io.flutter.embedding.android.FlutterActivity
 

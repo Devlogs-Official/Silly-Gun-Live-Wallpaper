@@ -113,16 +113,6 @@ class WallpaperGridItem extends StatelessWidget {
       ),
     );
   }
-
-  String _formatName(String value) {
-    final cleaned = value.replaceAll('_', ' ').trim();
-    if (cleaned.isEmpty) return 'Live wallpaper';
-    return cleaned
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .map((part) => part[0].toUpperCase() + part.substring(1))
-        .join(' ');
-  }
 }
 
 class _ImageSkeleton extends StatelessWidget {
